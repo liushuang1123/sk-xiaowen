@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sk小问 · 访谈追问助手</title>
+<style>
+  :root {
+    --bg: #f7f7f8; --card: #ffffff; --border: #e4e4e7;
+    --text: #18181b; --muted: #71717a; --accent: #185fa5; --accent-bg: #e6f1fb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 20px; font-weight: 500; }
+  header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .notice {
+    background: #faeeda; border: 0.5px solid #ef9f27; border-radius: 8px;
+    padding: 8px 12px; font-size: 12px; color: #633806; margin-bottom: 16px;
+  }
+  .card {
+    background: var(--card); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 16px;
+  }
+  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  textarea {
+    width: 100%; min-height: 130px; padding: 10px; font-size: 13px;
+    border: 0.5px solid var(--border); border-radius: 8px; resize: vertical;
+    font-family: inherit; background: #fafafa;
+  }
+  textarea:focus { outline: 1.5px solid var(--accent); background: #fff; }
+  #goalBox { min-height: 60px; }
+  button {
+    display: inline-block; background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; padding: 10px 28px; font-size: 14px; cursor: pointer;
+    font-family: inherit;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #chat { display: flex; flex-direction: column; gap: 12px; }
+  .msg { border-radius: 12px; padding: 12px 16px; font-size: 14px; white-space: pre-wrap; }
+  .msg.user { background: var(--accent-bg); align-self: flex-end; max-width: 85%; }
+  .msg.bot { background: var(--card); border: 0.5px solid var(--border); align-self: stretch; }
+  .msg.bot strong { color: var(--accent); }
+  .typing { color: var(--muted); font-size: 13px; }
+  #inputRow { display: none; margin-top: 16px; gap: 8px; }
+  #inputRow.on { display: flex; }
+  #followUp {
+    flex: 1; padding: 10px 12px; font-size: 13px;
+    border: 0.5px solid var(--border); border-radius: 8px; font-family: inherit;
+  }
+  #err { color: #a32d2d; font-size: 13px; margin-top: 8px; display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>sk小问 · 访谈追问助手</h1>
+    <p>上传初次访谈整理文本，生成下一次访谈可用的追问参考</p>
+  </header>
+
+  <div class="notice">隐私提醒：上传前请删除访谈文本中的真实姓名、电话、住址等个人信息（用“受访者A”等代替）。</div>
+
+  <div class="card" id="startForm">
+    <label>① 初次访谈整理文本</label>
+    <textarea id="interviewText" placeholder="粘贴整理好的初次访谈文本……"></textarea>
+    <label style="margin-top:12px">② 你的研究目标（本次调研想弄清楚什么问题？）</label>
+    <textarea id="goalBox" placeholder="例如：了解外卖骑手的工作时间安排及其对生活的影响"></textarea>
+    <div style="margin-top:12px; text-align:center">
+      <button id="startBtn" onclick="startGenerate()">生成追问</button>
+    </div>
+  </div>
+
+  <div id="chat"></div>
+
+  <div id="inputRow">
+    <input id="followUp" placeholder="想调整？例如：多要一些深挖型追问，去掉举例型" onkeydown="if(event.key==='Enter')sendFollow()">
+    <button onclick="sendFollow()">发送</button>
+  </div>
+  <div id="err"></div>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `你是"sk小问"，一款面向社会调查课程学生的二次访谈追问生成助手。
+
+# 任务
+用户会提供：(1) 对某位访谈对象的初次访谈整理文本；(2) 研究目标。你需要生成对该对象进行下一次访谈时可用的追问清单。
+
+# 工作流程
+1. 若缺少初访文本或研究目标，先礼貌追问补齐，不要凭空生成。
+2. 访谈目标识别：提炼初访文本中的关键主题、模糊或矛盾的表述、尚未展开的信息缺口。
+3. 追问生成：按以下五类分组输出，每类2~3条，不足的类别注明"本次无需"：
+   【澄清型】针对模糊说法，如"你刚才提到XX，具体指什么？"
+   【详述型】展开已有话题的细节和过程
+   【举例型】请对方给出具体事例或经历
+   【对比型】与初访中的说法或普遍情况作对照
+   【深挖型】追问动机、原因和意义
+4. 每条追问后用括号注明依据，格式：（依据：初访中提到"……"或：信息缺口：初访未涉及……）。
+5. 输出末尾给一段不超过50字的"下一步建议"，提示用户下次访谈可优先推进哪个方向。
+
+# 交互规则
+- 用户要求增删或调整某类追问时，基于已有上下文直接修改重新输出，不要从头重来。
+- 用户若说明"这是第N次访谈"或补充了上次追问的使用情况，将其纳入考虑，避免重复已问过的问题。
+
+# 禁止事项
+- 不生成诱导性提问，不预设"标准答案"。
+- 不生成涉及隐私或敏感个人信息的追问。
+- 若用户上传的文本含明显个人隐私（真实姓名、电话等），先提醒脱敏再继续。`;
+
+let messages = [];
+
+function addMsg(role, text) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+  div.textContent = text;
+  chat.appendChild(div);
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  return div;
+}
+
+async function callAPI() {
+  const errBox = document.getElementById('err');
+  errBox.style.display = 'none';
+  const typing = addMsg('bot', 'sk小问正在思考……');
+  typing.classList.add('typing');
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages })
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + t);
+    }
+    const data = await res.json();
+    const reply = data.choices[0].message.content;
+    typing.classList.remove('typing');
+    typing.textContent = '';
+    renderMarkdownish(typing, reply);
+    messages.push({ role: 'assistant', content: reply });
+    document.getElementById('inputRow').classList.add('on');
+    document.getElementById('followUp').focus();
+  } catch (e) {
+    typing.remove();
+    errBox.textContent = '生成失败：' + e.message;
+    errBox.style.display = 'block';
+  }
+}
+
+function renderMarkdownish(el, text) {
+  el.innerHTML = '';
+  text.split('\n').forEach(line => {
+    if (!line.trim()) { el.appendChild(document.createElement('br')); return; }
+    const p = document.createElement('div');
+    const bolded = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    p.innerHTML = bolded;
+    el.appendChild(p);
+  });
+}
+
+async function startGenerate() {
+  const text = document.getElementById('interviewText').value.trim();
+  const goal = document.getElementById('goalBox').value.trim();
+  const errBox = document.getElementById('err');
+  if (!text || !goal) {
+    errBox.textContent = '请先填写初访文本和研究目标。';
+    errBox.style.display = 'block';
+    return;
+  }
+  document.getElementById('startBtn').disabled = true;
+  addMsg('user', '【初访文本】' + (text.length > 100 ? text.slice(0, 100) + '……（已提交全文）' : text) + '\n【研究目标】' + goal);
+  messages.push({ role: 'user', content: '【初访文本】\n' + text + '\n\n【研究目标】\n' + goal });
+  document.getElementById('startForm').style.display = 'none';
+  await callAPI();
+  document.getElementById('startBtn').disabled = false;
+}
+
+async function sendFollow() {
+  const input = document.getElementById('followUp');
+  const v = input.value.trim();
+  if (!v) return;
+  addMsg('user', v);
+  messages.push({ role: 'user', content: v });
+  input.value = '';
+  await callAPI();
+}
+</script>
+</body>
+</html>
