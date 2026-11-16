@@ -8,63 +8,190 @@
   :root {
     --bg: #f7f7f8; --card: #ffffff; --border: #e4e4e7;
     --text: #18181b; --muted: #71717a; --accent: #185fa5; --accent-bg: #e6f1fb;
+    --hl: #fff3a3;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     background: var(--bg); color: var(--text); line-height: 1.6;
   }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; }
-  header { text-align: center; margin-bottom: 20px; }
-  header h1 { font-size: 20px; font-weight: 500; }
-  header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  button {
+    display: inline-block; background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; padding: 8px 20px; font-size: 13px; cursor: pointer;
+    font-family: inherit;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  input, textarea {
+    font-family: inherit; font-size: 13px;
+    border: 0.5px solid var(--border); border-radius: 8px;
+  }
+  textarea { width: 100%; min-height: 130px; padding: 10px; resize: vertical; background: #fafafa; }
+  textarea:focus, input:focus { outline: 1.5px solid var(--accent); background: #fff; }
+  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
   .notice {
     background: #faeeda; border: 0.5px solid #ef9f27; border-radius: 8px;
     padding: 8px 12px; font-size: 12px; color: #633806; margin-bottom: 16px;
   }
+
+  /* ===== 初始输入视图 ===== */
+  #setupView { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 20px; font-weight: 500; }
+  header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .card {
     background: var(--card); border: 0.5px solid var(--border);
     border-radius: 12px; padding: 16px; margin-bottom: 16px;
   }
-  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
-  textarea {
-    width: 100%; min-height: 130px; padding: 10px; font-size: 13px;
-    border: 0.5px solid var(--border); border-radius: 8px; resize: vertical;
-    font-family: inherit; background: #fafafa;
-  }
-  textarea:focus { outline: 1.5px solid var(--accent); background: #fff; }
   #goalBox { min-height: 60px; }
-  button {
-    display: inline-block; background: var(--accent); color: #fff; border: none;
-    border-radius: 8px; padding: 10px 28px; font-size: 14px; cursor: pointer;
-    font-family: inherit;
+  #err { color: #a32d2d; font-size: 13px; margin-top: 8px; display: none; white-space: pre-wrap; }
+
+  /* ===== 三栏工作台 ===== */
+  #workspace { display: none; height: 100vh; flex-direction: column; }
+  #workspace.on { display: flex; }
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; background: var(--card); border-bottom: 0.5px solid var(--border);
   }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  #chat { display: flex; flex-direction: column; gap: 12px; }
-  .msg { border-radius: 12px; padding: 12px 16px; font-size: 14px; white-space: pre-wrap; }
-  .msg.user { background: var(--accent-bg); align-self: flex-end; max-width: 85%; }
-  .msg.bot { background: var(--card); border: 0.5px solid var(--border); align-self: stretch; }
-  .msg.bot strong { color: var(--accent); }
-  .typing { color: var(--muted); font-size: 13px; }
-  #inputRow { display: none; margin-top: 16px; gap: 8px; }
-  #inputRow.on { display: flex; }
-  #followUp {
-    flex: 1; padding: 10px 12px; font-size: 13px;
-    border: 0.5px solid var(--border); border-radius: 8px; font-family: inherit;
+  .topbar h1 { font-size: 16px; font-weight: 500; margin-right: 8px; }
+  .viewBtn {
+    background: #eee; color: var(--text); padding: 6px 14px; font-size: 13px;
   }
-  #err { color: #a32d2d; font-size: 13px; margin-top: 8px; display: none; }
+  .viewBtn.active { background: var(--accent); color: #fff; }
+  .linkBtn {
+    background: none; color: var(--muted); padding: 6px 10px; font-size: 12px;
+    text-decoration: underline; margin-left: auto;
+  }
+  .layout { flex: 1; display: grid; grid-template-columns: 3fr 5fr 2fr; min-height: 0; }
+  .pane { overflow-y: auto; padding: 14px; }
+  #srcPane { background: #fcfcf9; border-right: 0.5px solid var(--border); }
+  #ctrlPane { background: var(--card); border-left: 0.5px solid var(--border); }
+  .paneTitle { font-size: 12px; color: var(--muted); margin-bottom: 10px; letter-spacing: 1px; }
+
+  /* 左栏：原文 */
+  #srcText { font-size: 14px; white-space: pre-wrap; line-height: 1.9; }
+  #srcText mark.hl { background: var(--hl); padding: 1px 0; border-radius: 3px; }
+
+  /* 中栏 */
+  .secTitle { font-size: 13px; font-weight: 600; margin: 18px 0 8px; display: flex; align-items: center; gap: 6px; }
+  .secTitle:first-child { margin-top: 0; }
+
+  .top3 {
+    background: #1f2937; color: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+  }
+  .top3 .rank { font-size: 12px; color: #fbbf24; font-weight: 600; }
+  .top3 .qq { font-size: 14px; margin: 4px 0 2px; }
+  .top3 .rs { font-size: 12px; color: #cbd5e1; }
+
+  .gapItem {
+    background: #fff; border: 0.5px dashed var(--accent); border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; margin-bottom: 8px;
+  }
+  .gapItem b { color: var(--accent); }
+
+  details.topic { border: 0.5px solid var(--border); border-radius: 10px; background: var(--card); margin-bottom: 10px; }
+  details.topic summary {
+    padding: 10px 14px; cursor: pointer; font-size: 14px; font-weight: 600; list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.topic summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  details.topic[open] summary::before { transform: rotate(90deg); }
+  .issueBody { padding: 0 14px 12px; }
+  .quoteBox {
+    background: #fafafa; border-left: 3px solid #d4d4d8; border-radius: 0 6px 6px 0;
+    padding: 6px 10px; font-size: 12px; color: var(--muted); margin-bottom: 4px;
+  }
+  .quoteBox b.kw { color: var(--text); border-bottom: 1.5px dashed var(--accent); font-weight: 600; }
+  .diagnosis { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .diagnosis::before { content: "诊断："; color: var(--accent); font-weight: 500; }
+
+  .qcard {
+    position: relative; background: #fff; border: 0.5px solid var(--border);
+    border-left-width: 3px; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .qcard:hover { box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+  .qtext { font-size: 14px; }
+  .qmeta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tag { font-size: 11px; padding: 1px 8px; border-radius: 99px; }
+  .t-clarify  { border-left-color: #d94f4f; }
+  .t-detail   { border-left-color: #3b82f6; }
+  .t-example  { border-left-color: #22a55f; }
+  .t-dig      { border-left-color: #e8842c; }
+  .t-compare  { border-left-color: #8b5cf6; }
+  .sit { background: #f1f1f3; color: #52525b; }
+  .sit-conflict { background: #fde3e3; color: #a32d2d; }
+  .sit-vague    { background: #fdf3d1; color: #8a6a08; }
+  .sit-short    { background: #e3edfd; color: #2b5ca8; }
+  .sit-num      { background: #efe3fd; color: #6d3fb8; }
+  .sit-open     { background: #e2f4e8; color: #1f7a45; }
+  .qactions { display: none; position: absolute; top: 6px; right: 8px; gap: 6px; }
+  .qcard:hover .qactions { display: flex; }
+  .qactions button {
+    background: #f1f1f3; color: var(--muted); font-size: 11px; padding: 2px 8px; border-radius: 6px;
+  }
+  .qactions button:hover { background: var(--accent-bg); color: var(--accent); }
+
+  .skipItem { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .skipItem::before { content: "🚫 "; }
+  .tipsBox, .nextBox, .remindBox {
+    font-size: 12.5px; color: var(--muted); background: var(--card);
+    border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .remindBox { color: #633806; background: #faeeda; border-color: #ef9f27; }
+
+  /* 剧本流 */
+  .tlItem { display: flex; gap: 10px; margin-bottom: 14px; }
+  .tlBadge {
+    flex-shrink: 0; align-self: flex-start; background: var(--accent); color: #fff;
+    font-size: 12px; border-radius: 99px; padding: 2px 12px; white-space: nowrap;
+  }
+  .tlContent {
+    background: var(--card); border: 0.5px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; font-size: 14px; white-space: pre-wrap; flex: 1;
+  }
+
+  /* 右栏 */
+  .ctrlBlock { margin-bottom: 16px; }
+  .ctrlBlock h4 { font-size: 12px; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; }
+  .toneOpt { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; margin-bottom: 6px; cursor: pointer; }
+  .toneOpt input { margin-top: 3px; }
+  .toneOpt small { display: block; color: var(--muted); font-size: 11px; }
+  #globalInput { width: 100%; padding: 8px 10px; margin-bottom: 6px; }
+  #globalBtn { width: 100%; }
+  .statLine { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  .alertBox {
+    font-size: 12px; color: #a32d2d; background: #fde3e3; border-radius: 8px;
+    padding: 8px 10px; margin-bottom: 8px;
+  }
+  #busy {
+    position: fixed; inset: 0; background: rgba(255,255,255,.6); display: none;
+    align-items: center; justify-content: center; font-size: 14px; color: var(--muted); z-index: 99;
+  }
+  #busy.on { display: flex; }
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1f2937; color: #fff; font-size: 13px; border-radius: 8px;
+    padding: 8px 16px; display: none; z-index: 100;
+  }
+
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; overflow-y: auto; display: block; }
+    .pane { max-height: none; }
+    #srcPane { max-height: 200px; border-right: none; border-bottom: 0.5px solid var(--border); }
+    #ctrlPane { border-left: none; border-top: 0.5px solid var(--border); }
+    #workspace { height: auto; min-height: 100vh; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<!-- 初始输入 -->
+<div id="setupView">
   <header>
     <h1>sk小问 · 访谈追问助手</h1>
-    <p>上传初次访谈整理文本，生成下一次访谈可用的追问参考</p>
+    <p>上传初次访谈整理文本，生成下一次访谈可用的追问参考（含原文溯源 · 必问 Top3 · 访谈剧本）</p>
   </header>
-
-  <div class="notice">隐私提醒：上传前请删除访谈文本中的真实姓名、电话、住址等个人信息（用“受访者A”等代替）。</div>
-
-  <div class="card" id="startForm">
+  <div class="notice">隐私提醒：上传前请删除访谈文本中的真实姓名、电话、住址等个人信息（用"受访者A"等代替）。</div>
+  <div class="card">
     <label>① 初次访谈整理文本</label>
     <textarea id="interviewText" placeholder="粘贴整理好的初次访谈文本……"></textarea>
     <label style="margin-top:12px">② 你的研究目标（本次调研想弄清楚什么问题？）</label>
@@ -72,142 +199,309 @@
     <div style="margin-top:12px; text-align:center">
       <button id="startBtn" onclick="startGenerate()">生成追问</button>
     </div>
+    <div id="err"></div>
   </div>
-
-  <div id="chat"></div>
-
-  <div id="inputRow">
-    <input id="followUp" placeholder="想调整？例如：多要一些深挖型追问，去掉举例型" onkeydown="if(event.key==='Enter')sendFollow()">
-    <button onclick="sendFollow()">发送</button>
-  </div>
-  <div id="err"></div>
 </div>
 
+<!-- 三栏工作台 -->
+<div id="workspace">
+  <div class="topbar">
+    <h1>sk小问</h1>
+    <button class="viewBtn active" id="btnDefault" onclick="switchView('default')">默认输出</button>
+    <button class="viewBtn" id="btnScript" onclick="switchView('script')">访谈剧本流</button>
+    <button class="linkBtn" onclick="restart()">↺ 新建分析</button>
+  </div>
+  <div class="layout">
+    <aside class="pane" id="srcPane">
+      <div class="paneTitle">初访原文（悬停追问可定位原文）</div>
+      <div id="srcText"></div>
+    </aside>
+    <main class="pane" id="mainPane">
+      <div id="defaultView"></div>
+      <div id="scriptView" style="display:none"></div>
+    </main>
+    <aside class="pane" id="ctrlPane">
+      <div class="ctrlBlock">
+        <h4>语气模式</h4>
+        <label class="toneOpt"><input type="radio" name="tone" value="neutral" checked onchange="setTone('neutral')">
+          <span>中性规范<small>直接使用规范话术提问（默认）</small></span></label>
+        <label class="toneOpt"><input type="radio" name="tone" value="empathetic" onchange="setTone('empathetic')">
+          <span>共情模式<small>先简短承接受访者处境，再引出问题</small></span></label>
+        <label class="toneOpt"><input type="radio" name="tone" value="direct" onchange="setTone('direct')">
+          <span>直接模式<small>问句简短直接、直指要点</small></span></label>
+      </div>
+      <div class="ctrlBlock">
+        <h4>全局微调</h4>
+        <input id="globalInput" placeholder='例如：去掉所有关于家庭的问题' onkeydown="if(event.key==='Enter')sendGlobal()">
+        <button id="globalBtn" onclick="sendGlobal()">发送调整</button>
+      </div>
+      <div class="ctrlBlock">
+        <h4>手法自检（自动统计）</h4>
+        <div id="statBox"><div class="statLine">尚未生成</div></div>
+      </div>
+      <div class="ctrlBlock">
+        <h4>伦理提醒</h4>
+        <div id="alertBox"><div class="statLine">尚未生成</div></div>
+      </div>
+      <div class="ctrlBlock">
+        <h4>访谈现场提示</h4>
+        <div id="tipsBox"><div class="statLine">尚未生成</div></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div id="busy">正在生成，请稍候……</div>
+<div id="toast"></div>
+
 <script>
-const SYSTEM_PROMPT = `你是"sk小问"，一款面向社会调查课程学生的二次访谈追问生成助手。
+/* ================= 状态 ================= */
+let state = { data: null, history: [], tone: 'neutral', sourceText: '', busy: false };
+const TONES = ['neutral', 'empathetic', 'direct'];
+const TONE_NAME = { neutral: '中性规范', empathetic: '共情', direct: '直接' };
 
-# 任务
-用户会提供：(1) 对某位访谈对象的初次访谈整理文本；(2) 研究目标。你需要生成对该对象进行下一次访谈时可用的追问清单。
-
-# 工作流程
-1. 若缺少初访文本或研究目标，先礼貌追问补齐，不要凭空生成。
-2. 通读初访文本，逐段找出真实存在的问题点，来源只有三类：
-   - 表述模糊：说不清、含糊（如"差不多""有时候"）
-   - 前后矛盾：与自身其他说法或上下文不一致
-   - 未展开：提到了却没给细节、没给例子、没说明原因
-   只记录文本中确实存在的问题，找不到就不写；严禁为了凑类型或凑数量凭空造问题。
-3. 对照研究目标，列出初访完全未涉及的维度，单列为"目标缺口"。
-4. 每个问题点生成1~2条追问，标注（类型：澄清/详述/举例/对比/深挖｜适用：模糊/矛盾/未展开）。类型只是标签，不是骨架：某条追问若不属于任何类型，可只写适用情形，不必强行归类。
-5. 输出按以下结构组织：
-   ① 首行脱敏提醒（固定）
-   ② 文本中的问题点（主体）：按议题分组，每个问题点写三层——原文摘录 → 诊断（为什么值得追问）→ 追问1~2条（带类型与适用情形标注）
-   ③ 目标缺口追问：研究目标中初访未涉及的维度，各配1条追问
-   ④ 本次跳过的话题：拒答、敏感、与目标无关的内容，注明跳过原因
-   ⑤ 手法自检（一行）：五类手法各用几次、哪类偏少，只提示不补凑数条目
-   ⑥ 现场提示：非提问式追问技术（停顿10~15秒、重复问题、重复原话）+ "不知道/不愿回答"应对话术
-   ⑦ 下一步建议（不超过50字）
-6. 清单标题与全文一律不得出现受访者真实姓名，统一用"受访者"代替；引用原文时保留原有措辞便于对照。
-7. 用户已明确表示"不想说/不愿回答"的话题，不再生成任何形式的追问（包括开放式），直接跳过并在④中注明。
-
-# 追问技术规范（源自 RAND L.A.FANS 访谈员培训手册）
-1. 每条追问末尾括注适用情形（回答模糊/前后矛盾/过于简短/答非所问/数字时间不清），方便用户在访谈现场判断何时使用。
-2. 追问措辞一律中性、非导向，不暗示任何候选答案；优先使用规范话术，如"你指的是什么？""能举个例子吗？""能更具体一点吗？"
-3. 数字或时间模糊的回答，提示用户追问具体数值或单一最佳估计；二次访谈沿用与初访一致的核心问法，仅在信息缺口处追问。
-
-# 交互规则
-- 用户要求调整、增删追问时，基于已有上下文直接修改重新输出，不要从头重来。
-- 用户若说明"这是第N次访谈"或补充了上次追问的使用情况，将其纳入考虑，避免重复已问过的问题。
-
-# 伦理红线（依据研究伦理审查要点，优先级高于其他所有规则）
-1. 不生成打探与研究目标无关的个人隐私或敏感话题（恋爱与性、家庭矛盾、收入细节、健康状况、宗教信仰、政治倾向等）的追问；无法确定相关性时，改为开放式提问并标注"（敏感话题，请确认受访者已知情同意）"。
-2. 不生成诱导性提问，不预设"标准答案"，不以强制、利诱方式获取回答。
-3. 不生成可能使受访者被贴标签、污名化或感到被冒犯的提问。
-4. 若初访文本显示受访者可能是未成年人、身心障碍者、判断能力受限的高龄者，或与研究者存在权力关系（师生、雇佣），须在输出末尾提醒：该群体属高风险研究对象，追问应保守并需额外的知情同意与保护程序。
-5. 引用原文时对能识别个人身份的信息（姓名、电话、住址等）一律匿名化处理。
-6. 每次输出末尾加一行提醒：受访者可拒答任何问题或随时退出；录音录像需事先单独征得同意。
-
-# 禁止事项
-- 若用户上传的文本含明显个人隐私（真实姓名、电话等），先提醒脱敏再继续。`;
-
-let messages = [];
-
-function addMsg(role, text) {
-  const chat = document.getElementById('chat');
-  const div = document.createElement('div');
-  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
-  div.textContent = text;
-  chat.appendChild(div);
-  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-  return div;
+/* ================= 工具 ================= */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.style.display = 'none', 2200);
+}
+function showBusy(on) { state.busy = on; document.getElementById('busy').classList.toggle('on', on); }
+function showErr(msg) {
+  const e = document.getElementById('err');
+  if (!msg) { e.style.display = 'none'; return; }
+  e.textContent = msg; e.style.display = 'block';
+}
+function parseJSON(txt) {
+  try { return JSON.parse(txt); } catch (_) {}
+  const m = String(txt).match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch (_) {} }
+  return null;
 }
 
-async function callAPI() {
-  const errBox = document.getElementById('err');
-  errBox.style.display = 'none';
-  const typing = addMsg('bot', 'sk小问正在思考……');
-  typing.classList.add('typing');
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages })
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error('HTTP ' + res.status + ': ' + t);
-    }
-    const data = await res.json();
-    const reply = data.choices[0].message.content;
-    typing.classList.remove('typing');
-    typing.textContent = '';
-    renderMarkdownish(typing, reply);
-    messages.push({ role: 'assistant', content: reply });
-    document.getElementById('inputRow').classList.add('on');
-    document.getElementById('followUp').focus();
-  } catch (e) {
-    typing.remove();
-    errBox.textContent = '生成失败：' + e.message;
-    errBox.style.display = 'block';
-  }
-}
-
-function renderMarkdownish(el, text) {
-  el.innerHTML = '';
-  text.split('\n').forEach(line => {
-    if (!line.trim()) { el.appendChild(document.createElement('br')); return; }
-    const p = document.createElement('div');
-    const bolded = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    p.innerHTML = bolded;
-    el.appendChild(p);
+/* ================= API ================= */
+async function callAPI(messages) {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, tone: state.tone })
   });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || ('HTTP ' + res.status));
+  return j.choices[0].message.content;
 }
 
+/* ================= 生成入口 ================= */
 async function startGenerate() {
   const text = document.getElementById('interviewText').value.trim();
   const goal = document.getElementById('goalBox').value.trim();
-  const errBox = document.getElementById('err');
-  if (!text || !goal) {
-    errBox.textContent = '请先填写初访文本和研究目标。';
-    errBox.style.display = 'block';
-    return;
+  showErr('');
+  if (!text || !goal) { showErr('请填写初访文本和研究目标'); return; }
+  state.sourceText = text;
+  state.history = [{ role: 'user', content: `【研究目标】\n${goal}\n\n【初次访谈整理文本】\n${text}` }];
+  await runAndRender('生成中');
+}
+async function runAndRender(busyText) {
+  if (state.busy) return;
+  document.getElementById('busy').textContent = busyText + '，请稍候……';
+  showBusy(true);
+  try {
+    const raw = await callAPI(state.history);
+    const data = parseJSON(raw);
+    if (!data) throw new Error('模型返回的不是有效 JSON，请重试一次');
+    state.data = data;
+    state.history.push({ role: 'assistant', content: raw });
+    enterWorkspace();
+    renderAll();
+  } catch (e) {
+    showErr('生成失败：' + e.message);
+  } finally {
+    showBusy(false);
   }
-  document.getElementById('startBtn').disabled = true;
-  addMsg('user', '【初访文本】' + (text.length > 100 ? text.slice(0, 100) + '……（已提交全文）' : text) + '\n【研究目标】' + goal);
-  messages.push({ role: 'user', content: '【初访文本】\n' + text + '\n\n【研究目标】\n' + goal });
-  document.getElementById('startForm').style.display = 'none';
-  await callAPI();
-  document.getElementById('startBtn').disabled = false;
 }
 
-async function sendFollow() {
-  const input = document.getElementById('followUp');
-  const v = input.value.trim();
-  if (!v) return;
-  addMsg('user', v);
-  messages.push({ role: 'user', content: v });
-  input.value = '';
-  await callAPI();
+/* ================= 视图切换 ================= */
+function enterWorkspace() {
+  document.getElementById('setupView').style.display = 'none';
+  document.getElementById('workspace').classList.add('on');
 }
+function restart() {
+  if (!confirm('放弃当前结果，重新开始？')) return;
+  state = { data: null, history: [], tone: state.tone, sourceText: '', busy: false };
+  document.getElementById('workspace').classList.remove('on');
+  document.getElementById('setupView').style.display = 'block';
+  showErr('');
+}
+function switchView(v) {
+  document.getElementById('defaultView').style.display = v === 'default' ? 'block' : 'none';
+  document.getElementById('scriptView').style.display = v === 'script' ? 'block' : 'none';
+  document.getElementById('btnDefault').classList.toggle('active', v === 'default');
+  document.getElementById('btnScript').classList.toggle('active', v === 'script');
+}
+
+/* ================= 左栏原文高亮 ================= */
+function renderSource(quote) {
+  const el = document.getElementById('srcText');
+  const txt = state.sourceText;
+  let html = esc(txt), hit = null;
+  if (quote) {
+    const i = txt.indexOf(quote);
+    if (i >= 0) {
+      html = esc(txt.slice(0, i)) + '<mark class="hl" id="hlMark">' + esc(txt.slice(i, i + quote.length)) + '</mark>' + esc(txt.slice(i + quote.length));
+      hit = true;
+    }
+  }
+  el.innerHTML = html;
+  const m = document.getElementById('hlMark');
+  if (m) m.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  else if (quote) toast('未能在原文中定位该摘录');
+}
+function clearHighlight() { renderSource(''); }
+
+/* ================= 渲染 ================= */
+const SIT_CLASS = { '前后矛盾':'sit-conflict','回答模糊':'sit-vague','过于简短':'sit-short','答非所问':'sit-short','数字时间不清':'sit-num','未展开':'sit-open' };
+const TYPE_CLASS = { '澄清':'t-clarify','详述':'t-detail','举例':'t-example','对比':'t-compare','深挖':'t-dig' };
+
+function markKeywords(quote, keywords) {
+  let s = esc(quote);
+  (keywords || []).forEach(k => {
+    if (!k) return;
+    const e = esc(k);
+    if (s.indexOf(e) >= 0) s = s.split(e).join('<b class="kw">' + e + '</b>');
+  });
+  return s;
+}
+function qTags(q) {
+  let h = '';
+  if (q.type && TYPE_CLASS[q.type]) h += `<span class="tag sit">${esc(q.type)}型</span>`;
+  if (q.situation) h += `<span class="tag ${SIT_CLASS[q.situation] || 'sit'}">${esc(q.situation)}</span>`;
+  return h;
+}
+function questionCard(issueIdx, qIdx, q) {
+  return `<div class="qcard ${q.type && TYPE_CLASS[q.type] ? TYPE_CLASS[q.type] : ''}"
+    onmouseenter="renderSource(state.data.issues[${issueIdx}].quote)"
+    onmouseleave="clearHighlight()">
+    <div class="qtext">${esc(q.text)}</div>
+    <div class="qmeta">${qTags(q)}</div>
+    <div class="qactions">
+      <button title="换一种问法" onclick="event.stopPropagation();cardAction(${issueIdx},${qIdx},'rephrase')">🔄 换个问法</button>
+      <button title="切换语气" onclick="event.stopPropagation();cardAction(${issueIdx},${qIdx},'tone')">🗣️ 换语气</button>
+    </div>
+  </div>`;
+}
+
+function renderAll() {
+  const d = state.data;
+  const V = document.getElementById('defaultView');
+  let h = '';
+
+  // 伦理提醒（置顶横幅）
+  (d.alerts || []).forEach(a => { h += `<div class="remindBox">⚠️ ${esc(a)}</div>`; });
+
+  // Top 3
+  if ((d.top3 || []).length) {
+    h += `<div class="secTitle">🎯 本次必问 Top ${d.top3.length}</div>`;
+    d.top3.forEach((t, i) => {
+      h += `<div class="top3"><div class="rank">必问 ${i + 1}</div><div class="qq">${esc(t.question)}</div><div class="rs">${esc(t.reason)}</div></div>`;
+    });
+  }
+
+  // 初访信息盲区
+  if ((d.gaps || []).length) {
+    h += `<div class="secTitle">🕳️ 初访信息盲区（研究目标未覆盖）</div>`;
+    d.gaps.forEach(g => { h += `<div class="gapItem"><b>${esc(g.dimension)}</b>：${esc(g.question)}</div>`; });
+  }
+
+  // 问题点（主体）
+  if ((d.issues || []).length) {
+    h += `<div class="secTitle">🔍 从初访文本中发现的问题点</div>`;
+    d.issues.forEach((iss, i) => {
+      h += `<details class="topic" ${i === 0 ? 'open' : ''}><summary>${esc(iss.topic)}<span class="tag sit">${iss.questions.length} 条追问</span></summary><div class="issueBody">
+        <div class="quoteBox">原文：${markKeywords(iss.quote, iss.keywords)}</div>
+        <div class="diagnosis">${esc(iss.diagnosis)}</div>
+        ${iss.questions.map((q, j) => questionCard(i, j, q)).join('')}
+      </div></details>`;
+    });
+  }
+
+  // 跳过的话题
+  if ((d.skipped || []).length) {
+    h += `<div class="secTitle">本次跳过的话题</div>`;
+    d.skipped.forEach(s => { h += `<div class="skipItem"><b>${esc(s.topic)}</b>——${esc(s.reason)}</div>`; });
+  }
+
+  // 下一步 + 提醒
+  if (d.next_step) h += `<div class="nextBox">💡 <b>下一步建议：</b>${esc(d.next_step)}</div>`;
+  if (d.reminders) h += `<div class="remindBox">ℹ️ ${esc(d.reminders)}</div>`;
+
+  V.innerHTML = h;
+
+  // 剧本流
+  const S = document.getElementById('scriptView');
+  let sh = `<div class="secTitle">📋 访谈剧本（按时间线，可照着念）</div>`;
+  (d.script || []).forEach(st => {
+    sh += `<div class="tlItem"><div class="tlBadge">${esc(st.phase)}</div><div class="tlContent">${esc(st.content)}</div></div>`;
+  });
+  sh += d.reminders ? `<div class="remindBox">ℹ️ ${esc(d.reminders)}</div>` : '';
+  S.innerHTML = sh;
+
+  // 左栏原文
+  renderSource('');
+
+  // 右栏：手法自检
+  const counts = {};
+  let total = 0;
+  (d.issues || []).forEach(iss => (iss.questions || []).forEach(q => { total++; if (q.type) counts[q.type] = (counts[q.type] || 0) + 1; }));
+  (d.gaps || []).forEach(g => { total++; if (g.question) counts['缺口'] = (counts['缺口'] || 0) + 1; });
+  let st = total ? Object.entries(counts).map(([k, v]) => `<div class="statLine">${esc(k)}：×${v}</div>`).join('') : '<div class="statLine">本次没有生成追问</div>';
+  document.getElementById('statBox').innerHTML = st + `<div class="statLine">合计 ${total} 条</div>`;
+
+  // 右栏：伦理提醒 + 现场提示
+  document.getElementById('alertBox').innerHTML =
+    (d.alerts || []).map(a => `<div class="alertBox">⚠️ ${esc(a)}</div>`).join('') +
+    (d.reminders ? `<div class="statLine">${esc(d.reminders)}</div>` : '');
+  document.getElementById('tipsBox').innerHTML = d.tips ? esc(d.tips).replace(/\n/g, '<br>') : '<div class="statLine">无</div>';
+}
+
+/* ================= 微调 ================= */
+function setTone(tone) {
+  if (tone === state.tone || !state.data) { state.tone = tone; return; }
+  state.tone = tone;
+  state.history.push({ role: 'user', content: `请将全部追问的语气调整为${TONE_NAME[tone]}模式：内容要点保持不变，只调整措辞风格。返回完整 JSON。` });
+  runAndRender('调整语气中').then(() => toast('已切换为' + TONE_NAME[tone] + '模式'));
+}
+function sendGlobal() {
+  const inp = document.getElementById('globalInput');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  if (!state.data) { toast('请先生成追问'); return; }
+  inp.value = '';
+  state.history.push({ role: 'user', content: msg + '（请基于当前清单修改后返回完整 JSON，未涉及的内容保持不变）' });
+  runAndRender('调整中');
+}
+function cardAction(issueIdx, qIdx, kind) {
+  const iss = state.data.issues[issueIdx];
+  const q = iss.questions[qIdx];
+  let msg;
+  if (kind === 'rephrase') {
+    msg = `请只把这条追问换一种问法（目标不变、保持中性非导向，措辞与原来明显不同）："${q.text}"（议题：${iss.topic}）。其余所有内容保持不变，返回完整 JSON。`;
+  } else {
+    const next = TONES[(TONES.indexOf(state.tone) + 1) % TONES.length];
+    state.tone = next;
+    document.querySelectorAll('input[name=tone]').forEach(r => r.checked = r.value === next);
+    msg = `请只把这条追问改为${TONE_NAME[next]}模式的问法："${q.text}"（议题：${iss.topic}）。其余所有内容保持不变，返回完整 JSON。`;
+  }
+  state.history.push({ role: 'user', content: msg });
+  runAndRender('微调中').then(() => toast('该条已更新'));
+}
+
+/* ================= 预检 ================= */
+window.addEventListener('DOMContentLoaded', () => {
+  // 预览环境（无后端）下按钮点击会失败，属于预期
+});
 </script>
 </body>
 </html>
