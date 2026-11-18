@@ -35,7 +35,7 @@
     padding: 10px 16px; background: var(--card); border-bottom: 0.5px solid var(--border);
   }
   .topbar h1 { font-size: 16px; font-weight: 500; margin-right: 8px; }
-  .topbar .sub { font-size: 12px; color: var(--muted); margin-right: auto; }
+  .topbar #btnDefault { margin-left: auto; }
   .viewBtn { background: #eee; color: var(--text); padding: 6px 14px; font-size: 13px; }
   .viewBtn.active { background: var(--accent); color: #fff; }
   .linkBtn {
@@ -184,6 +184,18 @@
   }
   #err { color: #a32d2d; font-size: 12.5px; margin-top: 6px; display: none; white-space: pre-wrap; }
 
+  /* 历史记录 */
+  #histList { max-height: 200px; overflow-y: auto; }
+  .histItem {
+    border: 0.5px solid var(--border); border-radius: 8px; padding: 6px 10px;
+    margin-bottom: 6px; cursor: pointer;
+  }
+  .histItem:hover { background: var(--accent-bg); }
+  .histGoal { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .histTime { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+  .histTime a, .histClear a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .histClear { text-align: right; font-size: 11px; }
+
   @media (max-width: 980px) {
     #workspace { height: auto; min-height: 100vh; }
     .layout { display: block; }
@@ -198,7 +210,6 @@
 <div id="workspace">
   <div class="topbar">
     <h1>sk小问</h1>
-    <span class="sub">访谈追问助手 · 原文溯源 / 必问 Top3 / 访谈剧本</span>
     <button class="viewBtn active" id="btnDefault" onclick="switchView('default')" disabled>默认输出</button>
     <button class="viewBtn" id="btnScript" onclick="switchView('script')" disabled>访谈剧本流</button>
     <button class="linkBtn" onclick="restart()">↺ 清空重来</button>
@@ -239,6 +250,11 @@
     <!-- 右栏：控制与策略台 -->
     <aside class="pane" id="ctrlPane">
       <div class="ctrlBlock">
+        <h4>📜 历史记录（仅保存在本机浏览器）</h4>
+        <div id="histList"><div class="statLine">暂无历史记录</div></div>
+        <div class="histClear" id="histClear" style="display:none"><a onclick="clearHistory()">清空全部</a></div>
+      </div>
+      <div class="ctrlBlock">
         <h4>语气模式</h4>
         <label class="toneOpt"><input type="radio" name="tone" value="neutral" checked onchange="setTone('neutral')">
           <span>中性规范<small>直接使用规范话术提问（默认）</small></span></label>
@@ -273,9 +289,73 @@
 
 <script>
 /* ================= 状态 ================= */
-let state = { data: null, history: [], tone: 'neutral', sourceText: '', busy: false };
+let state = { data: null, history: [], tone: 'neutral', sourceText: '', busy: false, sessionId: 0, goal: '' };
 const TONES = ['neutral', 'empathetic', 'direct'];
 const TONE_NAME = { neutral: '中性规范', empathetic: '共情', direct: '直接' };
+
+/* ================= 历史记录（localStorage，仅本机） ================= */
+const HKEY = 'sk_history_v1';
+const HMAX = 10;
+function loadHistories() {
+  try { return JSON.parse(localStorage.getItem(HKEY)) || []; } catch (_) { return []; }
+}
+function saveHistories(list) {
+  try { localStorage.setItem(HKEY, JSON.stringify(list)); }
+  catch (_) { toast('历史保存失败：浏览器本地存储空间不足'); }
+}
+function renderHistory() {
+  const list = loadHistories();
+  const box = document.getElementById('histList');
+  document.getElementById('histClear').style.display = list.length ? 'block' : 'none';
+  if (!list.length) { box.innerHTML = '<div class="statLine">暂无历史记录</div>'; return; }
+  box.innerHTML = list.map(it =>
+    `<div class="histItem" onclick="loadSession(${it.id})" title="点击载入这份记录">
+      <div class="histGoal">${esc(it.goal)}</div>
+      <div class="histTime"><span>${esc(it.time)}</span><a onclick="event.stopPropagation();delSession(${it.id})">删除</a></div>
+    </div>`).join('');
+}
+function saveSession() {
+  if (!state.data) return;
+  const goal = state.goal || document.getElementById('goalBox').value.trim() || '（未填写研究目标）';
+  const time = new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const list = loadHistories().filter(it => it.id !== state.sessionId);
+  list.unshift({ id: state.sessionId, time, goal, text: state.sourceText, tone: state.tone, data: state.data });
+  if (list.length > HMAX) list.length = HMAX;
+  saveHistories(list);
+  renderHistory();
+}
+function loadSession(id) {
+  if (state.busy) return;
+  const it = loadHistories().find(x => x.id === id);
+  if (!it) return;
+  state.sessionId = it.id;
+  state.sourceText = it.text;
+  state.goal = it.goal;
+  state.data = it.data;
+  state.tone = it.tone || 'neutral';
+  document.querySelectorAll('input[name=tone]').forEach(r => r.checked = r.value === state.tone);
+  document.getElementById('goalBox').value = it.goal;
+  document.getElementById('interviewText').value = it.text;
+  document.getElementById('goalText').textContent = '研究目标：' + it.goal;
+  document.getElementById('goalDetails').removeAttribute('open');
+  state.history = [
+    { role: 'user', content: `【研究目标】\n${it.goal}\n\n【初次访谈整理文本】\n${it.text}` },
+    { role: 'assistant', content: JSON.stringify(it.data) }
+  ];
+  showErr('');
+  renderAll();
+  toast('已载入历史记录，可继续微调');
+}
+function delSession(id) {
+  if (!confirm('删除这份历史记录？')) return;
+  saveHistories(loadHistories().filter(it => it.id !== id));
+  renderHistory();
+}
+function clearHistory() {
+  if (!confirm('清空全部历史记录？此操作不可恢复。')) return;
+  saveHistories([]);
+  renderHistory();
+}
 
 /* ================= 工具 ================= */
 function esc(s) {
@@ -318,6 +398,8 @@ async function startGenerate() {
   showErr('');
   if (!text || !goal) { showErr('请先填写左侧的初访原文和这里的研究目标'); return; }
   state.sourceText = text;
+  state.goal = goal;
+  state.sessionId = Date.now();
   state.history = [{ role: 'user', content: `【研究目标】\n${goal}\n\n【初次访谈整理文本】\n${text}` }];
   await runAndRender('生成中');
   if (state.data) {
@@ -336,6 +418,7 @@ async function runAndRender(busyText) {
     state.data = data;
     state.history.push({ role: 'assistant', content: raw });
     renderAll();
+    saveSession();
   } catch (e) {
     showErr('生成失败：' + e.message);
   } finally {
@@ -540,6 +623,9 @@ function cardAction(issueIdx, qIdx, kind) {
   state.history.push({ role: 'user', content: msg });
   runAndRender('微调中').then(() => toast('该条已更新'));
 }
+
+/* ================= 初始化 ================= */
+renderHistory();
 </script>
 </body>
 </html>
